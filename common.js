@@ -115,7 +115,7 @@ common.waitForText = function (method, txt, visible, sec) {
                 sleep(1000);
                 var btn = text(common.destAppName).findOne(3000);
                 if (btn != null) {
-                    log("switch to " + common.destAppName + ": " + click(btn.bounds().centerX(), btn.bounds().centerY()));
+                    log("switch to " + common.destAppName + ": " + btn.parent().parent().click());
                     sleep(1000);
                 } else {
                     log("no " + common.destAppName + " process");
@@ -158,7 +158,7 @@ common.waitForTextMatches = function (regex, visible, sec) {
                 sleep(1000);
                 var btn = text(common.destAppName).findOne(3000);
                 if (btn != null) {
-                    log("switch to " + common.destAppName + ": " + click(btn.bounds().centerX(), btn.bounds().centerY()));
+                    log("switch to " + common.destAppName + ": " + btn.parent().parent().click());
                     sleep(1000);
                 } else {
                     log("no " + common.destAppName + " process");
@@ -250,54 +250,6 @@ common.filterTaskList = function (todoTasks, validTaskNames) {
         }
     }
     return ret;
-}
-
-common.grantWalkToEarnPermission = function () {
-    var nowDate = new Date().Format("yyyy-MM-dd");
-    var permitted = common.safeGet(nowDate + ":" + this.walkToEarnPermissionTag);
-    if (permitted != null) {
-        log(this.walkToEarnPermissionTag + " : " + permitted);
-        return;
-    }
-
-    common.safeSet(nowDate + ":" + this.walkToEarnPermissionTag, true);
-    log(this.walkToEarnPermissionTag + " : 允许进入");
-}
-
-common.canWatch = function () {
-    var now = new Date().getTime();
-    var walkTS = null;
-    var workTS = null;
-    var nowDate = new Date().Format("yyyy-MM-dd");
-    var permitted = common.safeGet(nowDate + ":" + this.walkToEarnPermissionTag);
-    if (permitted != null) {
-        var tmp = parseInt(common.safeGet(this.nextWalkCheckTimestampTag));
-        if (!isNaN(tmp)) {
-            walkTS = tmp;
-        }
-    }
-
-    var tmp = parseInt(common.safeGet(this.nextWorkCheckTimestampTag));
-    if (!isNaN(tmp)) {
-        workTS = tmp;
-    }
-
-    var midnight = common.checkAuditTime("00:00", "08:00");
-    log("permitted: " + permitted + ", [00:00~08:00]: " + midnight + ", walkTS: " + this.timestampToTime(walkTS) + ", workTS: " + this.timestampToTime(workTS));
-
-    if (midnight && permitted == null) {
-        return false;
-    }
-    //当前时间小于Min(领取能量饮料, 领取体力)的时间才允许做视频任务
-    if (walkTS == null && workTS == null) {
-        return false;
-    } else if (walkTS == null && workTS != null) {
-        return now < workTS;
-    } else if (walkTS != null && walkTS == null) {
-        return now < walkTS;
-    } else {
-        return now < Math.min(walkTS, workTS);
-    }
 }
 
 module.exports = common;

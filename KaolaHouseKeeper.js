@@ -134,10 +134,33 @@ threads.start(function(){
             device.cancelKeepingAwake();
         }
 
-        toastLog("3600s 后的 " + common.timestampToTime(new Date().getTime() + 3600 * 1000) + " 进行下一次检查");
-        sleep(3600 * 1000);
+        var allComplete = isAllDailyTaskComplete();
+        log("isAllDailyTaskComplete: " + allComplete + ", mainWorker return: " + ret);
+        if (allComplete && ret) {
+            toastLog("3600s 后的 " + common.timestampToTime(new Date().getTime() + 3600 * 1000) + " 进行下一次检查");
+            sleep(3600 * 1000);
+        }
     }
 });
+
+function isAllDailyTaskComplete() {
+    if (!common.checkAuditTime("13:30", "24:00")) {
+        log("不在[13:30, 24:00]时间段内");
+        return true;
+    }
+
+    var nowDate = new Date().Format("yyyy-MM-dd");
+    var taskList = [];
+    taskList.push.apply(taskList, kaolaBeanSignIn.dailyJobs);
+    for (var i = 0; i < taskList.length; i++) {
+        var done = common.safeGet(nowDate + ":" + taskList[i]);
+        if (done == null) {
+            log("isAllDailyTaskComplete: " + nowDate + ":" + taskList[i] + " 未完成");
+            return false;
+        }
+    }
+    return true;
+}
 
 function mainWorker() {
     var ret = false;
@@ -147,7 +170,7 @@ function mainWorker() {
         sleep(1000);
         var btn = text(common.destAppName).findOne(3000);
         if (btn != null) {
-            log("switch to " + common.destAppName + ": " + click(btn.bounds().centerX(), btn.bounds().centerY()));
+            log("switch to " + common.destAppName + ": " + btn.parent().parent().click());
             sleep(1000);
         } else {
             log("no " + common.destAppName + " process");

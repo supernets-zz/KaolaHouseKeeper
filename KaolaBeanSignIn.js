@@ -3,6 +3,11 @@ var kaolaBeanSignIn = {};
 var common = require("./common.js");
 var commonAction = require("./commonAction.js");
 
+const signInTag = "考拉海购每日签到";
+
+kaolaBeanSignIn.dailyJobs = [];
+kaolaBeanSignIn.dailyJobs.push(signInTag);
+
 doMerchantTasks = function (tasklist) {
     var ret = false;
     for (var i = 0; i < tasklist.length; i++) {
@@ -93,8 +98,20 @@ doMerchantTasks = function (tasklist) {
 }
 
 kaolaBeanSignIn.doSignIn = function () {
-    toastLog("doSignIn");
+    log("kaolaBeanSignIn.doSignIn");
+    if (!common.checkAuditTime("13:30", "24:00")) {
+        log("不在[13:30, 24:00]时间段内");
+        return true;
+    }
 
+    var nowDate = new Date().Format("yyyy-MM-dd");
+    var done = common.safeGet(nowDate + ":" + signInTag);
+    if (done != null) {
+        log(signInTag + " 已做: " + done);
+        return true;
+    }
+
+    toast("kaolaBeanSignIn.doSignIn");
     var actionBar = commonAction.gotoKaolaBean();
     if (actionBar == null) {
         commonAction.backToAppMainPage();
@@ -141,15 +158,16 @@ kaolaBeanSignIn.doSignIn = function () {
         }
 
         var closeBtn = beanTaskTips.parent().child(beanTaskTips.parent().childCount() - 1);
+        var taskListNode = beanTaskTips.parent().child(3);
+        var swipeHeight = taskListNode.child(6).bounds().top - taskListNode.child(0).bounds().top;
         for (;;) {
             var doneTaskList = [];  //已完成的任务，领取就行
             var oneWalkTaskList = [];  //逛逛会场、关注商品任务列表，待够时间回来
             var merchantWalkTaskList = [];  //逛商品开箱子
-    
+
             var totalTasks = [];
             var validTaskNames = [];
-            var taskListNode = beanTaskTips.parent().child(3);
-            var swipeHeight = taskListNode.child(6).bounds().top - taskListNode.child(0).bounds().top;
+            taskListNode = beanTaskTips.parent().child(3);
             for (var i = 0; i < taskListNode.childCount();) {
                 var taskItem = {};
                 taskItem.Title = taskListNode.child(i+1).text();
@@ -181,13 +199,13 @@ kaolaBeanSignIn.doSignIn = function () {
                     validTaskNames.push(taskItem.Title);
                 }
             }
-    
+
             toastLog("任务数: " + totalTasks.length + ", 可见: " + validTaskNames.length + ", " + validTaskNames);
             if (totalTasks.length == 0) {
                 captureScreen("/sdcard/Download/" + (new Date().Format("yyyy-MM-dd HH:mm:ss")) + ".png");
                 break;
             }
-    
+
             totalTasks.forEach(function (tv) {
                 if (tv.BtnName.indexOf("下单") == -1 &&
                     tv.Tips.indexOf("下单") == -1 && 
@@ -212,7 +230,7 @@ kaolaBeanSignIn.doSignIn = function () {
                     log("跳过任务: " + tv.Title + ", " + tv.BtnName + ", (" + tv.Button.bounds().centerX() + ", " + tv.Button.bounds().centerY() + "), " + tv.Tips);
                 }
             });
-    
+
             var uncompleteTaskNum = doneTaskList.length + oneWalkTaskList.length + merchantWalkTaskList.length;
             log("未完成任务数: " + uncompleteTaskNum);
             if (uncompleteTaskNum == 0) {
@@ -221,7 +239,7 @@ kaolaBeanSignIn.doSignIn = function () {
                 jobAllDone = true;
                 break;
             }
-    
+
             doneTaskList = common.filterTaskList(doneTaskList, validTaskNames);
             if (doneTaskList.length != 0) {
                 log("点击 " + doneTaskList[0].BtnName + ": " + doneTaskList[0].Button.click());
@@ -230,7 +248,7 @@ kaolaBeanSignIn.doSignIn = function () {
                 sleep(2000);
                 break;
             }
-    
+
             merchantWalkTaskList = common.filterTaskList(merchantWalkTaskList, validTaskNames);
             if (doMerchantTasks(merchantWalkTaskList) != 0) {
                 log("关闭赚豆任务列表: " + closeBtn.click());
@@ -244,7 +262,7 @@ kaolaBeanSignIn.doSignIn = function () {
                 sleep(2000);
                 break;
             }
-    
+
             log("上划屏幕: " + swipe(device.width / 2, Math.floor(device.height * 7 / 8), device.width / 2, Math.floor(device.height * 7 / 8) - swipeHeight * validTaskNames.length, 500));
             // log("关闭赚豆任务列表: " + closeBtn.click());
             // sleep(2000);
@@ -273,6 +291,9 @@ kaolaBeanSignIn.doSignIn = function () {
     }
 
     log("考拉豆: " + actionBar.child(3).child(actionBar.child(3).childCount() - 1).child(0).text() + ", 升级进度: " + actionBar.child(2).child(1).child(0).text());
+
+    common.safeSet(nowDate + ":" + signInTag, "done");
+    toastLog("完成 " + signInTag);
     return true;
 }
 

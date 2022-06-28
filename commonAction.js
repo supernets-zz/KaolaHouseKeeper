@@ -54,7 +54,7 @@ commonAction.backToAppMainPage = function () {
             sleep(1000);
             var btn = text(common.destAppName).findOne(3000);
             if (btn != null) {
-                log("switch to " + common.destAppName + ": " + click(btn.bounds().centerX(), btn.bounds().centerY()));
+                log("switch to " + common.destAppName + ": " + btn.parent().parent().click());
                 sleep(1000);
             } else {
                 log("no " + common.destAppName + " process");
@@ -139,7 +139,7 @@ commonAction.scrollThrough = function (txt, timeout) {
             sleep(1000);
             var btn = text(common.destAppName).findOne(3000);
             if (btn != null) {
-                log("switch to " + common.destAppName + ": " + click(btn.bounds().centerX(), btn.bounds().centerY()));
+                log("switch to " + common.destAppName + ": " + btn.parent().parent().click());
                 sleep(1000);
             } else {
                 log("no " + common.destAppName + " process");
@@ -157,35 +157,75 @@ commonAction.scrollThrough = function (txt, timeout) {
     return true;
 }
 
+commonAction.backToTaskList = function (title) {
+    if (title.indexOf("(") != -1) {
+        title = title.slice(0, title.indexOf("("));
+    }
+    toastLog("backToTaskList: " + title);
+    var startTick = new Date().getTime();
+    for (;;) {
+        var ret = back();
+        log("back(): " + ret);
+
+        var curPkg = currentPackage();
+        log("currentPackage(): " + curPkg);
+        if (curPkg != common.destPackageName) {
+            log("recents: " + recents());
+            sleep(1000);
+            var btn = text(common.destAppName).findOne(3000);
+            if (btn != null) {
+                log("switch to " + common.destAppName + ": " + btn.parent().parent().click());
+                sleep(1000);
+            } else {
+                log("no " + common.destAppName + " process");
+            }
+        }
+
+        sleep(3000);
+        var tips = packageName(common.destPackageName).className("android.view.View").textContains(title).findOne(1000);
+        if (tips != null) {
+            break;
+        }
+        toastLog("no " + title);
+
+        if (new Date().getTime() - startTick > 15 * 1000) {
+            log("backToFeedTaskList timeout");
+            break;
+        }
+    }
+}
+
 //成功返回true，超时或异常返回false，最后会返回上一个页面
 commonAction.doBrowseTasks = function (tasklist, triedTasklist) {
     var ret = false;
     for (var i = 0; i < tasklist.length; i++) {
-        toastLog("点击[" + (i+1) + "/" + tasklist.length + "] " + tasklist[i].Title + " " + tasklist[i].BtnName + ": " + click(tasklist[i].Button.bounds().centerX(), tasklist[i].Button.bounds().centerY()));
+        // toastLog("点击[" + (i+1) + "/" + tasklist.length + "] " + tasklist[i].Title + " " + tasklist[i].BtnName + ": " + click(tasklist[i].Button.bounds().centerX(), tasklist[i].Button.bounds().centerY()));
+        toastLog("点击[" + (i+1) + "/" + tasklist.length + "] " + tasklist[i].Title + " " + tasklist[i].BtnName + ": " + tasklist[i].Button.parent().click());
         sleep(5000);
         if (triedTasklist != null) {
             triedTasklist.push(tasklist[i].Title);
         }
         // 等待离开任务列表页面
-        if (common.waitForText("textContains", "浏览", true, 10)) {
-            log("等待 " + tasklist[i].Title + " 浏览完成，60s超时");
-            sleep(5000);
-            var browseRet = commonAction.scrollThrough("浏览", 60);
+        if (tasklist[i].Tips == "") {
+            sleep(20000);
             //回到任务列表
-            back();
-            sleep(3000);
-            if (browseRet) {
-                log("浏览 " + tasklist[i].Title + " 完成");
-                ret = true;
-            } else {
-                log("60s timeout");
-            }
-            break;
+            commonAction.backToTaskList(tasklist[i].Title);
         } else {
-            if (textContains("考拉豆可用于").findOne(3000) == null) {
+            if (common.waitForText("textContains", "浏览", true, 10)) {
+                log("等待 " + tasklist[i].Title + " 浏览完成，60s超时");
+                sleep(5000);
+                var browseRet = commonAction.scrollThrough("浏览", 60);
                 //回到任务列表
-                back();
-                sleep(3000);
+                commonAction.backToTaskList(tasklist[i].Title);
+                if (browseRet) {
+                    log("浏览 " + tasklist[i].Title + " 完成");
+                    ret = true;
+                } else {
+                    log("60s timeout");
+                }
+                break;
+            } else {
+                commonAction.backToTaskList(tasklist[i].Title);
             }
         }
     }
